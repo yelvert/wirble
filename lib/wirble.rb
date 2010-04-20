@@ -401,8 +401,7 @@ module Wirble
 
       # misc colors
       :number             => :cyan,
-      :language_keyword   => :green,
-      :keyword            => :light_gray,
+      :keyword            => :green,
       :class              => :light_green,
       :range              => :red,
     }
