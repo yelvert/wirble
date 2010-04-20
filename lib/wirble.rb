@@ -135,17 +135,19 @@ module Wirble
     #
     module Tokenizer
       def self.tokenize(str)
+        
         raise 'missing block' unless block_given?
         chars = str.split(//)
 
         # $stderr.puts "DEBUG: chars = #{chars.join(',')}"
 
         state, val, i, lc = [], '', 0, nil
-        while i <= chars.size
+        numchars = chars.size
+        while i <= numchars
           repeat = false
           c = chars[i]
 
-          # $stderr.puts "DEBUG: state = #{state}"
+          # $stderr.puts "DEBUG: state = #{state} c: '#{c}' i: #{i}"
 
           case state[-1]
           when nil
@@ -216,7 +218,6 @@ module Wirble
             else
               # is this a class?
               st = val =~ /^[A-Z]/ ? :class : state[-1]
-
               yield st, val
               state.pop; val = ''
               repeat = true
@@ -244,27 +245,40 @@ module Wirble
             when '<' 
               yield :open_object, '#<'
               state << :object_class
-            when ':' 
-              state << :object_addr
-            when '@' 
+            when ':','@'
               state << :object_line
+              repeat = true
             when '>'
               yield :close_object, '>'
               state.pop; val = ''
+            when ' '
+              yield  :space, ' '
             end
           when :object_class
             case c
             when ':'
+              if i<numchars && (chars[i+1] == ":")
+                i += 1
+                val << '::'
+              else
+                yield state[-1], val
+                state.pop; state << :object_addr
+                val=''
+              end
+            when ' '
+              val << c
               yield state[-1], val
-              state.pop; val = ''
-              repeat = true
+              state.pop; val=''
+            when '>'
+              yield state[-1], val
+              yield :close_object, '>'
+              state.pop; state.pop; val=''
             else
               val << c
             end
           when :object_addr
             case c
-            when '>'
-            when '@'
+            when '>','@'
               yield :object_addr_prefix, ':'
               yield state[-1], val
               state.pop; val = ''
@@ -272,12 +286,36 @@ module Wirble
             else
               val << c
             end
-          when :object_line
+          when :object_line, :object_line_right
             case c
-            when '>'
+            when '"'
+              state << :string
+            when ':'
+              state << :symbol
+            when '@'
               yield :object_line_prefix, '@'
+            when '='
+              yield state[-1], val
+              yield :object_line_assignment, '='
+              state.pop; state << :object_line_right
+              val = ''
+            when ','
+              yield state[-1], val
+              yield :comma, ','
+              state.pop; val = ''
+            when '>',','
               yield state[-1], val
               state.pop; val = ''
+              repeat = true
+            when '#'
+              yield state[-1], val
+              val = ''
+              state << :object
+            when /[a-z]/i
+              state << :keyword
+              repeat = true
+            when /[0-9-]/
+              state << :number
               repeat = true
             else
               val << c
@@ -290,6 +328,7 @@ module Wirble
             i += 1
             lc = c
           end
+          repeat=false
         end
       end
     end
@@ -331,8 +370,8 @@ module Wirble
     # 
     DEFAULT_COLORS = {
       # delimiter colors
-      :comma              => :blue,
-      :refers             => :blue,
+      :comma              => :dark_gray,
+      :refers             => :dark_gray,
 
       # container colors (hash and array)
       :open_hash          => :green,
@@ -342,23 +381,28 @@ module Wirble
 
       # object colors
       :open_object        => :light_red,
-      :object_class       => :white,
-      :object_addr_prefix => :blue,
-      :object_line_prefix => :blue,
+      :object_class       => :red,
+      :object_addr_prefix => :light_blue,
+      :object_addr        => :dark_gray,
+      :object_line        => :blue,
+      :object_line_assignment => :dark_gray,
+      :object_line_prefix => :light_blue,
       :close_object       => :light_red,
+      :object_line_right  => :green,
 
       # symbol colors
-      :symbol             => :yellow,
+      :symbol             => :brown,
       :symbol_prefix      => :yellow,
 
       # string colors
-      :open_string        => :red,
-      :string             => :cyan,
-      :close_string       => :red,
+      :open_string        => :light_red,
+      :string             => :light_blue,
+      :close_string       => :light_red,
 
       # misc colors
       :number             => :cyan,
-      :keyword            => :green,
+      :language_keyword   => :green,
+      :keyword            => :light_gray,
       :class              => :light_green,
       :range              => :red,
     }
@@ -419,7 +463,7 @@ module Wirble
           ret << colorize_string(val, colors[tok])
         end
         ret
-      rescue
+      rescue => e        
         # catch any errors from the tokenizer (just in case)
         str
       end
