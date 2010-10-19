@@ -31,11 +31,9 @@ files:
 - setup.rb
 - COPYING
 - ChangeLog
-- github-test.rb
 - lib/wirble.rb
 - wirble.gemspec
 - README
-- wirble-0.1.2.gem
 has_rdoc: true
 homepage: http://pablotron.org/software/wirble/
 licenses: []
@@ -70,5 +68,3 @@ signing_key:
 specification_version: 3
 summary: Handful of common Irb features, made easy.
 test_files: []
-
-
