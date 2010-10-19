@@ -47,8 +47,10 @@ module Wirble
     #
     def self.init_prompt
       # set the prompt
-      if IRB.conf[:PROMPT_MODE] == :DEFAULT
-        IRB.conf[:PROMPT_MODE] = :SIMPLE
+      if IRB.responds_to? :conf
+        if IRB.conf[:PROMPT_MODE] == :DEFAULT
+          IRB.conf[:PROMPT_MODE] = :SIMPLE
+        end
       end
     end
 
